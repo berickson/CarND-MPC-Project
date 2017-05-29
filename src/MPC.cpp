@@ -2,6 +2,7 @@
 #include <cppad/cppad.hpp>
 #include <cppad/ipopt/solve.hpp>
 #include "Eigen-3.3/Eigen/Core"
+#include "Eigen-3.3/Eigen/QR"
 
 using CppAD::AD;
 
@@ -49,25 +50,65 @@ Eigen::VectorXd get_next_state(Eigen::VectorXd state,
 class FG_eval {
  public:
   // Fitted polynomial coefficients
-  Eigen::VectorXd coeffs;
-  FG_eval(Eigen::VectorXd coeffs) { this->coeffs = coeffs; }
+  Eigen::VectorXd route_coefs;
+  double v0;
+  double n_time_steps;
+  double dt;
+
+  FG_eval(double v0, double dt, double n_time_steps, Eigen::VectorXd route_coefs) {
+      this->route_coefs = route_coefs;
+      this->v0 = v0;
+      this->dt = dt;
+      this->n_time_steps = n_time_steps;
+  }
 
   typedef CPPAD_TESTVECTOR(AD<double>) ADvector;
-  void operator()(ADvector& fg, const ADvector& vars) {
-    // TODO: implement MPC
-    // fg a vector of constraints, x is a vector of constraints.
-    // NOTE: You'll probably go back and forth between this function and
-    // the Solver function below.
+
+  // returns a cost in fg[0] given based on actuations
+  void operator()(ADvector& fg, const ADvector& actuations) {
+      auto & cost = fg[0];
+
+      AD<double> x = 0;
+      AD<double> y = 0;
+      AD<double> psi = 0;
+      AD<double> v = v0;
+
+      // play through the route and update cost at each point
+      for (int i=0; i<n_time_steps; ++i) {
+          // get actuations (unflatten)
+          auto & a = actuations[actuators_a + i * n_actuators];     // acceleration
+          auto & delta = actuations[actuators_delta + i * n_actuators]; // wheel angle
+
+          // update state at time step
+          x += v * CppAD::cos(psi) * dt;
+          y += v * CppAD::sin(psi) * dt;
+          psi += v/Lf * delta * dt;
+          v += a * dt;
+
+          // calculate desired position
+          AD<double> y_desired;
+          for (int i = 0; i < route_coefs.size(); i++) {
+              y_desired += route_coefs[i] * pow(x, i);
+          }
+
+          // calculate error
+          cost += CppAD::pow(y-y_desired,2);
+
+
+      }
+
   }
 };
 
 //
 // MPC class definition implementation.
 //
-MPC::MPC() {}
-MPC::~MPC() {}
+MPC::~MPC()
+{
 
-vector<double> MPC::Solve(Eigen::VectorXd state, Eigen::VectorXd coeffs) {
+}
+
+vector<double> MPC::Solve(Eigen::VectorXd state, Eigen::VectorXd route_coeffs) {
   bool ok = true;
   size_t i;
   typedef CPPAD_TESTVECTOR(double) Dvector;
@@ -77,7 +118,7 @@ vector<double> MPC::Solve(Eigen::VectorXd state, Eigen::VectorXd coeffs) {
   // element vector and there are 10 timesteps. The number of variables is:
   //
   // 4 * 10 + 2 * 9
-  size_t n_vars = 0;
+  size_t n_vars = n_actuators * n_time_steps;
   // TODO: Set the number of constraints
   size_t n_constraints = 0;
 
@@ -102,7 +143,8 @@ vector<double> MPC::Solve(Eigen::VectorXd state, Eigen::VectorXd coeffs) {
   }
 
   // object that computes objective and constraints
-  FG_eval fg_eval(coeffs);
+
+  FG_eval fg_eval(state[state_v], dt, n_time_steps, route_coeffs);
 
   //
   // NOTE: You don't have to worry about these options
@@ -143,4 +185,32 @@ vector<double> MPC::Solve(Eigen::VectorXd state, Eigen::VectorXd coeffs) {
   // {...} is shorthand for creating a vector, so auto x1 = {1.0,2.0}
   // creates a 2 element double vector.
   return {0.1,0.1};
+}
+
+double polyeval(Eigen::VectorXd coeffs, double x) {
+    double result = 0.0;
+    for (int i = 0; i < coeffs.size(); i++) {
+        result += coeffs[i] * pow(x, i);
+    }
+    return result;
+}
+
+Eigen::VectorXd polyfit(Eigen::VectorXd xvals, Eigen::VectorXd yvals, int order) {
+    assert(xvals.size() == yvals.size());
+    assert(order >= 1 && order <= xvals.size() - 1);
+    Eigen::MatrixXd A(xvals.size(), order + 1);
+
+    for (int i = 0; i < xvals.size(); i++) {
+        A(i, 0) = 1.0;
+    }
+
+    for (int j = 0; j < xvals.size(); j++) {
+        for (int i = 0; i < order; i++) {
+            A(j, i + 1) = A(j, i) * xvals(j);
+        }
+    }
+
+    auto Q = A.householderQr();
+    auto result = Q.solve(yvals);
+    return result;
 }
