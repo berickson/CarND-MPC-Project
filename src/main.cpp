@@ -82,6 +82,14 @@ void world2car(double px, double py, double psi, vector<double> & ptsx, vector<d
     }
 }
 
+Eigen::VectorXd vector2eigen(vector<double> v) {
+    Eigen::VectorXd rv(v.size());
+    for(int i = 0; i < v.size(); ++i) {
+        rv[i]=v[i];
+    }
+    return rv;
+}
+
 int main() {
   uWS::Hub h;
 
@@ -110,8 +118,15 @@ int main() {
           double psi = j[1]["psi"];
           double v = j[1]["speed"];
 
+          // transform route points to car reference frame
           world2car(px,py,psi,ptsx,ptsy);
           cout << px << ", " << py<< ", " << psi<< ", " << v << endl;
+
+          // fit route points to polynomial
+          Eigen::VectorXd vx = vector2eigen(ptsx);
+          Eigen::VectorXd vy = vector2eigen(ptsy);
+          Eigen::VectorXd poly = polyfit(vx, vy, 3);
+
 
           /*
           * TODO: Calculate steeering angle and throttle using MPC.
@@ -122,7 +137,7 @@ int main() {
           double steer_value;
           double throttle_value;
 
-          steer_value = -0.03;
+          steer_value = -0.02;
           throttle_value = 0.1;
 
           json msgJson;
@@ -131,9 +146,18 @@ int main() {
           msgJson["steering_angle"] = steer_value;
           msgJson["throttle"] = throttle_value;
 
+
           //Display the MPC predicted trajectory 
-          vector<double> mpc_x_vals = {0,5,10,20,30};
-          vector<double> mpc_y_vals = {0,0, 0, 0, 10};
+          vector<double> mpc_x_vals(60);
+          std::iota(mpc_x_vals.begin(), mpc_x_vals.end(), 0);
+          vector<double> mpc_y_vals(mpc_x_vals.size());
+
+
+          // display the fit polynomial
+          for(int i=0; i < mpc_x_vals.size(); i++) {
+              mpc_y_vals[i] = polyeval(poly, mpc_x_vals[i]);
+          }
+
 
           //.. add (x,y) points to list here, points are in reference to the vehicle's coordinate system
           // the points in the simulator are connected by a Green line
@@ -163,7 +187,7 @@ int main() {
           //
           // NOTE: REMEMBER TO SET THIS TO 100 MILLISECONDS BEFORE
           // SUBMITTING.
-          this_thread::sleep_for(chrono::milliseconds(100));
+          // this_thread::sleep_for(chrono::milliseconds(100));
           ws.send(msg.data(), msg.length(), uWS::OpCode::TEXT);
         }
       } else {
