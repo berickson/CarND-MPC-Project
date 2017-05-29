@@ -6,8 +6,8 @@
 using CppAD::AD;
 
 // TODO: Set the timestep length and duration
-size_t N = 0;
-double dt = 0;
+size_t N = 20;    // 20 intervals of 100 ms
+double dt = 2.0;  // two seconds is a good near time horizon
 
 // This value assumes the model presented in the classroom is used.
 //
@@ -20,6 +20,31 @@ double dt = 0;
 //
 // This is the length from front to CoG that has a similar radius.
 const double Lf = 2.67;
+
+// returns the next state using the global kinematic equations
+// from quiz at
+// https://classroom.udacity.com/nanodegrees/nd013/parts/40f38239-66b6-46ec-ae68-03afd8a601c8/modules/f1820894-8322-4bb3-81aa-b26b3c6dcbaf/lessons/af4fcd4f-eb1f-43d8-82b3-17bb1e71695f/concepts/eaad060f-cd6d-4e60-9386-995f586126be
+Eigen::VectorXd get_next_state(Eigen::VectorXd state,
+                                Eigen::VectorXd actuators, double dt) {
+  Eigen::VectorXd next_state(state.size());
+  double x = state(state_x);
+  double y = state(state_y);
+  double psi = state(state_psi);
+  double v = state(state_v);
+
+  double delta = actuators(actuators_delta);
+  double a = actuators(actuators_a);
+  x += v*cos(psi) * dt;
+  y += v*sin(psi) * dt;
+  psi += v/Lf * delta * dt;
+  v += a * dt;
+
+  next_state << x,y,psi,v;
+
+  return next_state;
+}
+
+
 
 class FG_eval {
  public:

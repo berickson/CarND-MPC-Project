@@ -90,6 +90,7 @@ Eigen::VectorXd vector2eigen(vector<double> v) {
     return rv;
 }
 
+
 int main() {
   uWS::Hub h;
 
@@ -123,9 +124,7 @@ int main() {
           cout << px << ", " << py<< ", " << psi<< ", " << v << endl;
 
           // fit route points to polynomial
-          Eigen::VectorXd vx = vector2eigen(ptsx);
-          Eigen::VectorXd vy = vector2eigen(ptsy);
-          Eigen::VectorXd poly = polyfit(vx, vy, 3);
+          Eigen::VectorXd poly = polyfit(vector2eigen(ptsx), vector2eigen(ptsy), 3);
 
 
           /*
@@ -134,11 +133,38 @@ int main() {
           * Both are in between [-1, 1].
           *
           */
+          vector<double> mpc_x_vals(60);
+          vector<double> mpc_y_vals(mpc_x_vals.size());
+
+
+          Eigen::VectorXd state(4);
+          // state << px, py, psi, v;
+          state << 0, 0, 0, v;
+
           double steer_value;
           double throttle_value;
 
           steer_value = -0.02;
           throttle_value = 0.1;
+          Eigen::VectorXd actuators(2);
+
+          double delta = steer_value; // todo: scale appropriately
+          double a = throttle_value; // todo: scale appropriately
+          actuators[actuators_a] = a;
+          actuators[actuators_delta] = delta;
+
+          // calculate trajectory with fixed input
+          // todo: replace with MPC trajectory
+          {
+              Eigen::VectorXd s = state;
+              double dt = 0.1;
+              for(int i = 0; i < mpc_x_vals.size(); ++i) {
+                  s = get_next_state(s, actuators, dt);
+                  mpc_x_vals[i] = s[state_x];
+                  mpc_y_vals[i] = -s[state_y]; // coordiniate frame is flipped
+              }
+          }
+
 
           json msgJson;
           // NOTE: Remember to divide by deg2rad(25) before you send the steering value back.
@@ -148,15 +174,15 @@ int main() {
 
 
           //Display the MPC predicted trajectory 
-          vector<double> mpc_x_vals(60);
+          /*
           std::iota(mpc_x_vals.begin(), mpc_x_vals.end(), 0);
-          vector<double> mpc_y_vals(mpc_x_vals.size());
 
 
           // display the fit polynomial
           for(int i=0; i < mpc_x_vals.size(); i++) {
               mpc_y_vals[i] = polyeval(poly, mpc_x_vals[i]);
           }
+          */
 
 
           //.. add (x,y) points to list here, points are in reference to the vehicle's coordinate system
