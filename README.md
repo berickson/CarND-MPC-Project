@@ -21,11 +21,13 @@ Self-Driving Car Engineer Nanodegree Program
 * Fortran Compiler
   * Mac: `brew install gcc` (might not be required)
   * Linux: `sudo apt-get install gfortran`. Additionall you have also have to install gcc and g++, `sudo apt-get install gcc g++`. Look in [this Dockerfile](https://github.com/udacity/CarND-MPC-Quizzes/blob/master/Dockerfile) for more info.
+* sudo apt-get install libcoin80v5 (stops runtime error complaining about libcoinmumps.so.1)
 * [Ipopt](https://projects.coin-or.org/Ipopt)
   * Mac: `brew install ipopt`
   * Linux
-    * You will need a version of Ipopt 3.12.1 or higher. The version available through `apt-get` is 3.11.x. If you can get that version to work great but if not there's a script `install_ipopt.sh` that will install Ipopt. You just need to download the source from the Ipopt [releases page](https://www.coin-or.org/download/source/Ipopt/) or the [Github releases](https://github.com/coin-or/Ipopt/releases) page.
-    * Then call `install_ipopt.sh` with the source directory as the first argument, ex: `bash install_ipopt.sh Ipopt-3.12.1`. 
+    * You will need a version of Ipopt 3.12.1 or higher. The version available through `apt-get` is 3.11.x. If you can get that version to work great but if not there's a script `install_ipopt.sh` that will install Ipopt. You just need to download the source from https://www.coin-or.org/download/source/Ipopt/Ipopt-3.12.7.tgz <s>the Ipopt [releases page](https://www.coin-or.org/download/source/Ipopt/) or the [Github releases](https://github.com/coin-or/Ipopt/releases) page.</s>
+    * You will need fortran installed `sudo apt-get install gfortran`
+    * Then call `install_ipopt.sh` with the source directory as the first argument, ex: `sudo bash install_ipopt.sh /home/<user>/Ipopt-3.12.1`. 
   * Windows: TODO. If you can use the Linux subsystem and follow the Linux instructions.
 * [CppAD](https://www.coin-or.org/CppAD/)
   * Mac: `brew install cppad`
