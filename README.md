@@ -3,8 +3,12 @@ Self-Driving Car Engineer Nanodegree Program
 * Brian Erickson
 
 ---
+
+[![MPC Controller Assignment](http://img.youtube.com/vi/d4r_Xld2TME/0.jpg)](http://www.youtube.com/watch?v=d4r_Xld2TME "MPC Controller Assignment")
+
+
 ## Overview
-Model Predictive Control (MPC) uses a model of how a vehicle will travel through a state space given actuations, a cost function to measures how well a set of planned actuations will meet a goal, and a solver to find an optimal set of actuations to minimize the cost function.
+Model Predictive Control (MPC) uses a model of how a vehicle will travel through a state space given actuations, a cost function to measure how well a set of planned actuations will meet a goal, and a solver to find an optimal set of actuations to minimize the cost function.
 
 The model I used was based on fixed steering angles between time steps, fixed acceleration between time steps, and a bicycle style steering.  At each time step, the pose is updated based on the steering angle and any given acceleration.  The actuations are the steering angle and acceleration.  The state variables are the x and y position of the car, the current yaw angle of the car, and the current velocity of the car.
 
@@ -21,11 +25,12 @@ Here is how the state udpate is done:
           v += a * dt;
 
 
-I chose to use a timestep of 100ms and 10 time steps.  This means that the time horizon is about 1 second.  I chose the 100ms because it matches the latency that we are expected to achieve.  I chose the low number of time steps because it keeps the execution fast and higher time horizons didn't help to stabilize the car.  I tried finer time steps, such as 50ms, and longer time horizons up to several seconds, but they didn't improve performance.  In addition, sometimes the longer time horizons would cause bad behaviors like the car looping back on the track instead of going forward. Part of this could be because the waypoints presented from the simulator have a limited range in front and behind the car.
+I chose to use a time step of 100ms and 10 time steps.  This means that the time horizon is about 1 second.  I chose the 100ms because it matches the latency that we are expected to achieve.  I chose the low number of time steps because it keeps the execution fast and higher time horizons didn't help to stabilize the car.  I tried finer time steps, such as 50ms, and longer time horizons up to several seconds, but they didn't improve performance.  In addition, sometimes the longer time horizons would cause bad behaviors like the car looping back on the track instead of going forward. Part of this could be because the waypoints presented from the simulator have a limited range in front and behind the car.
 
 I used a polynomail to fit the waypoints.  This provided a smooth curve to use in calculations including calculations for cross track error and heading errors.
 
-To make the car drive well with a 100ms lag, I made two adjustments.  The first was to use the second set of actions, that is, actuations 100ms from the initial reading.  The second thing I did was to ensure smooth steering in my cost function.  I did this by punishing high variability in steering angles between time steps.  It turns out that this had a much bigger effect on stability with high lag / high speed, than simply skipping 100ms of actuations.  Without these modifications for lag, the car would become unstable and drive off of the track at higher speeds with higher lags.
+To make the car drive well with a 100ms lag, I made two adjustments.  The first was to use the second set of activations, that is, actuations 100ms from the initial reading.  The second thing I did was to ensure smooth steering in my cost function.  I did this by punishing high variability in steering angles between time steps.  It turns out that this had a much bigger effect on stability with high lag / high speed, than simply skipping 100ms of actuations.  Without these modifications for lag, the car would become unstable and drive off of the track at higher speeds with higher lags.
+
 
 
 
