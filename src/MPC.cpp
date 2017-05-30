@@ -103,13 +103,8 @@ class FG_eval {
           // follow speed limit
           cost += CppAD::pow(v-v_set,2);
 
-          // punish too much steering
-          //cost += CppAD::pow(delta,2);
 
-          // punish aggressive braking / accel
-          //cost += CppAD::abs(a);
-
-          // calculate error
+          // add cost for cross-track error
           cost += CppAD::pow(y-y_desired,2);
 
           // punish choppy actuations

@@ -33,7 +33,6 @@ string hasData(string s) {
 
 
 void world2car(double px, double py, double psi, vector<double> & ptsx, vector<double> & ptsy) {
-    //cout << "world2car psi: " << psi << endl;
     double cos_psi = cos(psi);
     double sin_psi = sin(psi);
     for(auto i = 0; i < ptsx.size(); i++) {
@@ -61,7 +60,6 @@ Eigen::VectorXd vector2eigen(vector<double> v) {
 int main() {
   uWS::Hub h;
 
-  // MPC is initialized here!
   int n_time_steps = 10;
   double dt = 0.1;
   double speed_limit = 25;
@@ -73,7 +71,6 @@ int main() {
     // The 4 signifies a websocket message
     // The 2 signifies a websocket event
     string sdata = string(data).substr(0, length);
-    //cout << sdata << endl;
     if (sdata.size() > 2 && sdata[0] == '4' && sdata[1] == '2') {
       string s = hasData(sdata);
       if (s != "") {
@@ -97,16 +94,8 @@ int main() {
           Eigen::VectorXd poly = polyfit(vector2eigen(ptsx), vector2eigen(ptsy), 3);
 
 
-          /*
-          * TODO: Calculate steeering angle and throttle using MPC.
-          *
-          * Both are in between [-1, 1].
-          *
-          */
-
 
           Eigen::VectorXd state(4);
-          // state << px, py, psi, v;
           state << 0, 0, 0, v;
           vector<double> solution = mpc.Solve(state, poly);
 
@@ -141,19 +130,6 @@ int main() {
           // Otherwise the values will be in between [-deg2rad(25), deg2rad(25] instead of [-1, 1].
           msgJson["steering_angle"] = steer_value / deg2rad(25);
           msgJson["throttle"] = throttle_value;
-
-
-
-          //Display the MPC predicted trajectory 
-          /*
-          std::iota(mpc_x_vals.begin(), mpc_x_vals.end(), 0);
-
-
-          // display the fit polynomial
-          for(int i=0; i < mpc_x_vals.size(); i++) {
-              mpc_y_vals[i] = polyeval(poly, mpc_x_vals[i]);
-          }
-          */
 
 
           //.. add (x,y) points to list here, points are in reference to the vehicle's coordinate system
