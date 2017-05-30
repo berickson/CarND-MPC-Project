@@ -55,12 +55,14 @@ class FG_eval {
   double v0;
   double n_time_steps;
   double dt;
+  double v_set;
 
-  FG_eval(double v0, double dt, double n_time_steps, Eigen::VectorXd route_coefs) {
+  FG_eval(double v0, double dt, double n_time_steps, Eigen::VectorXd route_coefs, double v_set) {
       this->route_coefs = route_coefs;
       this->v0 = v0;
       this->dt = dt;
       this->n_time_steps = n_time_steps;
+      this->v_set = v_set;
   }
 
   typedef CPPAD_TESTVECTOR(AD<double>) ADvector;
@@ -92,16 +94,12 @@ class FG_eval {
               y_desired += route_coefs[i] * CppAD::pow(x, i);
           }
 
-          cost += CppAD::pow(v-25,2); // todo: remove hard-coded 25
+          // follow speed limit
+          cost += CppAD::pow(v-v_set,2);
 
           // calculate error
           cost += CppAD::pow(y-y_desired,2);
       }
-      cout << "costed actuatsion: ";
-      for(int i = 0; i < 8; ++i) {
-          cout << actuations[i] << ",";
-      }
-      cout << endl;
   }
 };
 
@@ -144,13 +142,13 @@ vector<double> MPC::Solve(Eigen::VectorXd state, Eigen::VectorXd route_coeffs) {
       vars[index_delta] = 0;
       vars_lowerbound[index_a] = -1;
       vars_upperbound[index_a] = 1;
-      vars_lowerbound[index_delta] = -0.25;
-      vars_upperbound[index_delta] = +0.25;
+      vars_lowerbound[index_delta] = -0.45;
+      vars_upperbound[index_delta] = +0.45;
   }
 
   // object that computes objective and constraints
 
-  FG_eval fg_eval(state[state_v], dt, n_time_steps, route_coeffs);
+  FG_eval fg_eval(state[state_v], dt, n_time_steps, route_coeffs, v_set);
 
   //
   // NOTE: You don't have to worry about these options
@@ -179,10 +177,12 @@ vector<double> MPC::Solve(Eigen::VectorXd state, Eigen::VectorXd route_coeffs) {
 
   // Cost
   auto cost = solution.obj_value;
+  /*
   std::cout << "Cost " << cost << endl;
   for(int i = 0; i < n_vars; ++i) {
       cout << "  solution.x["<<i<<"]:" << solution.x[i] << std::endl;
   }
+  */
 
 
   // TODO: Return the first actuator values. The variables can be accessed with
@@ -190,7 +190,11 @@ vector<double> MPC::Solve(Eigen::VectorXd state, Eigen::VectorXd route_coeffs) {
   //
   // {...} is shorthand for creating a vector, so auto x1 = {1.0,2.0}
   // creates a 2 element double vector.
-  return {solution.x[0],solution.x[1]};
+  vector<double> rv(n_vars);
+  for(int i=0; i<n_vars; i++) {
+      rv[i]=solution.x[i];
+  }
+  return rv;
 }
 
 double polyeval(Eigen::VectorXd coeffs, double x) {

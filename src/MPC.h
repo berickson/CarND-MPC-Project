@@ -42,7 +42,7 @@ public:
     virtual ~MPC();
 
     // Solve the model given an initial state and polynomial coefficients.
-    // Return the first actuatotions.
+    // Return all actuations
     vector<double> Solve(Eigen::VectorXd state, Eigen::VectorXd route_coeffs);
 };
 

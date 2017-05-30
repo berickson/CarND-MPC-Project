@@ -33,7 +33,7 @@ string hasData(string s) {
 
 
 void world2car(double px, double py, double psi, vector<double> & ptsx, vector<double> & ptsy) {
-    cout << "world2car psi: " << psi << endl;
+    //cout << "world2car psi: " << psi << endl;
     double cos_psi = cos(psi);
     double sin_psi = sin(psi);
     for(auto i = 0; i < ptsx.size(); i++) {
@@ -62,9 +62,9 @@ int main() {
   uWS::Hub h;
 
   // MPC is initialized here!
-  int n_time_steps = 20;
+  int n_time_steps = 10;
   double dt = 0.1;
-  double v_set = 25;
+  double v_set = 50;
   MPC mpc(n_time_steps, dt, v_set);
 
   h.onMessage([&mpc](uWS::WebSocket<uWS::SERVER> ws, char *data, size_t length,
@@ -73,13 +73,13 @@ int main() {
     // The 4 signifies a websocket message
     // The 2 signifies a websocket event
     string sdata = string(data).substr(0, length);
-    cout << sdata << endl;
+    //cout << sdata << endl;
     if (sdata.size() > 2 && sdata[0] == '4' && sdata[1] == '2') {
       string s = hasData(sdata);
       if (s != "") {
         auto j = json::parse(s);
         string event = j[0].get<string>();
-        cout << event << endl;
+        //cout << event << endl;
         if (event == "telemetry") {
           // j[1] is the data JSON object
           vector<double> ptsx = j[1]["ptsx"];
@@ -91,7 +91,7 @@ int main() {
 
           // transform route points to car reference frame
           world2car(px,py,psi,ptsx,ptsy);
-          cout << px << ", " << py<< ", " << psi<< ", " << v << endl;
+          //cout << px << ", " << py<< ", " << psi<< ", " << v << endl;
 
           // fit route points to polynomial
           Eigen::VectorXd poly = polyfit(vector2eigen(ptsx), vector2eigen(ptsy), 3);
@@ -103,8 +103,6 @@ int main() {
           * Both are in between [-1, 1].
           *
           */
-          vector<double> mpc_x_vals(60);
-          vector<double> mpc_y_vals(mpc_x_vals.size());
 
 
           Eigen::VectorXd state(4);
@@ -124,15 +122,18 @@ int main() {
           actuators[actuators_a] = a;
           actuators[actuators_delta] = delta;
 
-          // calculate trajectory with fixed input
-          // todo: replace with MPC trajectory
+          // calculate MPC trajectory
+          vector<double> mpc_x_vals(solution.size()/2);
+          vector<double> mpc_y_vals(mpc_x_vals.size());
           {
               Eigen::VectorXd s = state;
               double dt = 0.1;
-              for(int i = 0; i < mpc_x_vals.size(); ++i) {
+              for(int i = 0; i < solution.size(); i+=2) {
+                  actuators[actuators_a] = -solution[i + actuators_a];
+                  actuators[actuators_delta] = solution[i + actuators_delta];
                   s = get_next_state(s, actuators, dt);
-                  mpc_x_vals[i] = s[state_x];
-                  mpc_y_vals[i] = -s[state_y]; // coordiniate frame is flipped
+                  mpc_x_vals[i/2] = s[state_x];
+                  mpc_y_vals[i/2] = s[state_y];
               }
           }
 
