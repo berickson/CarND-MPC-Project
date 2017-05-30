@@ -64,8 +64,8 @@ int main() {
   // MPC is initialized here!
   int n_time_steps = 10;
   double dt = 0.1;
-  double v_set = 50;
-  MPC mpc(n_time_steps, dt, v_set);
+  double speed_limit = 25;
+  MPC mpc(n_time_steps, dt, speed_limit);
 
   h.onMessage([&mpc](uWS::WebSocket<uWS::SERVER> ws, char *data, size_t length,
                      uWS::OpCode opCode) {
@@ -110,15 +110,13 @@ int main() {
           state << 0, 0, 0, v;
           vector<double> solution = mpc.Solve(state, poly);
 
-          double steer_value = -solution[0];
-          double throttle_value = solution[1];
+          double steer_value = -solution[2+0];
+          double throttle_value = solution[2+1];
 
-          // steer_value = -0.02;
-          // throttle_value = 0.1;
           Eigen::VectorXd actuators(2);
 
-          double delta = steer_value; // todo: scale appropriately
-          double a = throttle_value; // todo: scale appropriately
+          double delta = steer_value;
+          double a = throttle_value;
           actuators[actuators_a] = a;
           actuators[actuators_delta] = delta;
 
@@ -141,7 +139,7 @@ int main() {
           json msgJson;
           // NOTE: Remember to divide by deg2rad(25) before you send the steering value back.
           // Otherwise the values will be in between [-deg2rad(25), deg2rad(25] instead of [-1, 1].
-          msgJson["steering_angle"] = steer_value;
+          msgJson["steering_angle"] = steer_value / deg2rad(25);
           msgJson["throttle"] = throttle_value;
 
 
@@ -187,7 +185,7 @@ int main() {
           //
           // NOTE: REMEMBER TO SET THIS TO 100 MILLISECONDS BEFORE
           // SUBMITTING.
-          // this_thread::sleep_for(chrono::milliseconds(100));
+          this_thread::sleep_for(chrono::milliseconds(100));
           ws.send(msg.data(), msg.length(), uWS::OpCode::TEXT);
         }
       } else {

@@ -7,10 +7,6 @@
 
 using CppAD::AD;
 
-// TODO: Set the timestep length and duration
-size_t N = 20;    // 20 intervals of 100 ms
-double dt = 2.0;  // two seconds is a good near time horizon
-
 // This value assumes the model presented in the classroom is used.
 //
 // It was obtained by measuring the radius formed by running the vehicle in the
@@ -94,11 +90,39 @@ class FG_eval {
               y_desired += route_coefs[i] * CppAD::pow(x, i);
           }
 
+          // calculate desired yaw (using derivative)
+          AD<double> dy_desired = 0;
+          for (int i = 1; i < route_coefs.size(); i++) {
+              dy_desired += i * route_coefs[i] * CppAD::pow(x, i-1);
+          }
+          AD<double> psi_desired = CppAD::atan(dy_desired);
+
+          // add cost for heading error
+          cost += CppAD::pow(psi_desired-psi,2);
+
           // follow speed limit
           cost += CppAD::pow(v-v_set,2);
 
+          // punish too much steering
+          //cost += CppAD::pow(delta,2);
+
+          // punish aggressive braking / accel
+          //cost += CppAD::abs(a);
+
           // calculate error
           cost += CppAD::pow(y-y_desired,2);
+
+          // punish choppy actuations
+          for (int i = 1; i < n_time_steps; ++i) {
+            auto &a1 = actuations[actuators_a + n_actuators * (i - 1)];
+            auto &delta1 = actuations[actuators_delta + n_actuators * (i - 1)];
+
+            auto &a2 = actuations[actuators_a + n_actuators * i];
+            auto &delta2 = actuations[actuators_delta + n_actuators * i];
+
+            cost += 10 * CppAD::pow(a2 - a1, 2);
+            cost += 30 * CppAD::pow(delta2 - delta1, 2);
+          }
       }
   }
 };
@@ -122,7 +146,7 @@ vector<double> MPC::Solve(Eigen::VectorXd state, Eigen::VectorXd route_coeffs) {
   //
   // 4 * 10 + 2 * 9
   size_t n_vars = n_actuators * n_time_steps;
-  // TODO: Set the number of constraints
+
   size_t n_constraints = 0;
 
   Dvector vars(n_vars);
@@ -175,21 +199,8 @@ vector<double> MPC::Solve(Eigen::VectorXd state, Eigen::VectorXd route_coeffs) {
   // Check some of the solution values
   ok &= solution.status == CppAD::ipopt::solve_result<Dvector>::success;
 
-  // Cost
-  auto cost = solution.obj_value;
-  /*
-  std::cout << "Cost " << cost << endl;
-  for(int i = 0; i < n_vars; ++i) {
-      cout << "  solution.x["<<i<<"]:" << solution.x[i] << std::endl;
-  }
-  */
+  // auto cost = solution.obj_value;
 
-
-  // TODO: Return the first actuator values. The variables can be accessed with
-  // `solution.x[i]`.
-  //
-  // {...} is shorthand for creating a vector, so auto x1 = {1.0,2.0}
-  // creates a 2 element double vector.
   vector<double> rv(n_vars);
   for(int i=0; i<n_vars; i++) {
       rv[i]=solution.x[i];
