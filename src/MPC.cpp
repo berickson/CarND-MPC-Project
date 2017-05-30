@@ -3,6 +3,7 @@
 #include <cppad/ipopt/solve.hpp>
 #include "Eigen-3.3/Eigen/Core"
 #include "Eigen-3.3/Eigen/QR"
+#include <cppad/utility/poly.hpp>
 
 using CppAD::AD;
 
@@ -86,17 +87,21 @@ class FG_eval {
           v += a * dt;
 
           // calculate desired position
-          AD<double> y_desired;
+          AD<double> y_desired = 0;
           for (int i = 0; i < route_coefs.size(); i++) {
-              y_desired += route_coefs[i] * pow(x, i);
+              y_desired += route_coefs[i] * CppAD::pow(x, i);
           }
+
+          cost += CppAD::pow(v-25,2); // todo: remove hard-coded 25
 
           // calculate error
           cost += CppAD::pow(y-y_desired,2);
-
-
       }
-
+      cout << "costed actuatsion: ";
+      for(int i = 0; i < 8; ++i) {
+          cout << actuations[i] << ",";
+      }
+      cout << endl;
   }
 };
 
@@ -122,24 +127,25 @@ vector<double> MPC::Solve(Eigen::VectorXd state, Eigen::VectorXd route_coeffs) {
   // TODO: Set the number of constraints
   size_t n_constraints = 0;
 
-  // Initial value of the independent variables.
-  // SHOULD BE 0 besides initial state.
   Dvector vars(n_vars);
-  for (int i = 0; i < n_vars; i++) {
-    vars[i] = 0;
-  }
-
   Dvector vars_lowerbound(n_vars);
   Dvector vars_upperbound(n_vars);
   // TODO: Set lower and upper limits for variables.
 
   // Lower and upper limits for the constraints
   // Should be 0 besides initial state.
-  Dvector constraints_lowerbound(n_constraints);
-  Dvector constraints_upperbound(n_constraints);
-  for (int i = 0; i < n_constraints; i++) {
-    constraints_lowerbound[i] = 0;
-    constraints_upperbound[i] = 0;
+  Dvector constraints_lowerbound(0);
+  Dvector constraints_upperbound(0);
+  for (int i = 0; i < n_time_steps; i++) {
+      int offset = 2 * i;
+      int index_a = offset + actuators_a;
+      int index_delta = offset + actuators_delta;
+      vars[index_a] = 0;
+      vars[index_delta] = 0;
+      vars_lowerbound[index_a] = -1;
+      vars_upperbound[index_a] = 1;
+      vars_lowerbound[index_delta] = -0.25;
+      vars_upperbound[index_delta] = +0.25;
   }
 
   // object that computes objective and constraints
@@ -151,17 +157,9 @@ vector<double> MPC::Solve(Eigen::VectorXd state, Eigen::VectorXd route_coeffs) {
   //
   // options for IPOPT solver
   std::string options;
-  // Uncomment this if you'd like more print information
   options += "Integer print_level  0\n";
-  // NOTE: Setting sparse to true allows the solver to take advantage
-  // of sparse routines, this makes the computation MUCH FASTER. If you
-  // can uncomment 1 of these and see if it makes a difference or not but
-  // if you uncomment both the computation time should go up in orders of
-  // magnitude.
   options += "Sparse  true        forward\n";
   options += "Sparse  true        reverse\n";
-  // NOTE: Currently the solver has a maximum time limit of 0.5 seconds.
-  // Change this as you see fit.
   options += "Numeric max_cpu_time          0.5\n";
 
   // place to return solution
@@ -169,22 +167,30 @@ vector<double> MPC::Solve(Eigen::VectorXd state, Eigen::VectorXd route_coeffs) {
 
   // solve the problem
   CppAD::ipopt::solve<Dvector, FG_eval>(
-      options, vars, vars_lowerbound, vars_upperbound, constraints_lowerbound,
-      constraints_upperbound, fg_eval, solution);
+              options,
+              vars,
+              vars_lowerbound,
+              vars_upperbound,
+              constraints_lowerbound,
+              constraints_upperbound, fg_eval, solution);
 
   // Check some of the solution values
   ok &= solution.status == CppAD::ipopt::solve_result<Dvector>::success;
 
   // Cost
   auto cost = solution.obj_value;
-  std::cout << "Cost " << cost << std::endl;
+  std::cout << "Cost " << cost << endl;
+  for(int i = 0; i < n_vars; ++i) {
+      cout << "  solution.x["<<i<<"]:" << solution.x[i] << std::endl;
+  }
+
 
   // TODO: Return the first actuator values. The variables can be accessed with
   // `solution.x[i]`.
   //
   // {...} is shorthand for creating a vector, so auto x1 = {1.0,2.0}
   // creates a 2 element double vector.
-  return {0.1,0.1};
+  return {solution.x[0],solution.x[1]};
 }
 
 double polyeval(Eigen::VectorXd coeffs, double x) {

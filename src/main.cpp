@@ -62,7 +62,7 @@ int main() {
   uWS::Hub h;
 
   // MPC is initialized here!
-  int n_time_steps = 60;
+  int n_time_steps = 20;
   double dt = 0.1;
   double v_set = 25;
   MPC mpc(n_time_steps, dt, v_set);
@@ -110,12 +110,13 @@ int main() {
           Eigen::VectorXd state(4);
           // state << px, py, psi, v;
           state << 0, 0, 0, v;
+          vector<double> solution = mpc.Solve(state, poly);
 
-          double steer_value;
-          double throttle_value;
+          double steer_value = -solution[0];
+          double throttle_value = solution[1];
 
-          steer_value = -0.02;
-          throttle_value = 0.1;
+          // steer_value = -0.02;
+          // throttle_value = 0.1;
           Eigen::VectorXd actuators(2);
 
           double delta = steer_value; // todo: scale appropriately
@@ -141,6 +142,7 @@ int main() {
           // Otherwise the values will be in between [-deg2rad(25), deg2rad(25] instead of [-1, 1].
           msgJson["steering_angle"] = steer_value;
           msgJson["throttle"] = throttle_value;
+
 
 
           //Display the MPC predicted trajectory 
